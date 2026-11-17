@@ -1,0 +1,12 @@
+const fs = require('fs/promises');
+const path = require('path');
+const PDFDocument = require('pdfkit');
+const { createCanvas } = require('@napi-rs/canvas');
+const { recentMonths } = require('../services/personalSubmission');
+const aadhaarLines = ['FICTIONAL OCR TEST - NOT A GOVERNMENT DOCUMENT', 'Name: Asha Demo', 'Date of Birth: 14/03/1995', 'Address: 42 Demo Lane, Sample City, Karnataka 560001', 'Aadhaar: 1234 5678 9012', 'Synthetic number for masking tests only.'];
+const salaryLines = month => ['FICTIONAL OCR TEST - NOT A REAL PAYSLIP', 'Employee Name: Asha Demo', 'Employee ID: DEMO-042', 'Employer Name: Example Demo Labs', `Salary Month: ${month}`, 'Gross Salary: INR 65,000.00', 'Net Salary: INR 58,500.00'];
+function pdf(lines, image) { return new Promise((resolve, reject) => { const doc = new PDFDocument({ size: 'A4', margin: 42 }), chunks = []; doc.on('data', c => chunks.push(c)); doc.on('end', () => resolve(Buffer.concat(chunks))); doc.on('error', reject); if (image) doc.image(image, { width: 510 }); else { doc.fillColor('#34304c').fontSize(13); for (const line of lines) { doc.text(line); doc.moveDown(.8); } } doc.end(); }); }
+function image(lines, mime = 'image/png') { const canvas = createCanvas(1800, 1100), ctx = canvas.getContext('2d'); ctx.fillStyle = 'white'; ctx.fillRect(0, 0, 1800, 1100); ctx.fillStyle = '#111111'; ctx.font = '30px Arial'; lines.forEach((line, i) => ctx.fillText(line, 70, 100 + i * 100)); return canvas.toBuffer(mime); }
+async function fixtures(month = recentMonths()[1]) { const aadhaarPng = image(aadhaarLines); return { aadhaarPdf: await pdf(aadhaarLines), salaryPdf: await pdf(salaryLines(month)), aadhaarPng, salaryJpg: image(salaryLines(month), 'image/jpeg'), scannedAadhaarPdf: await pdf([], aadhaarPng) }; }
+module.exports = { fixtures, pdf, image, aadhaarLines, salaryLines };
+if (require.main === module) (async () => { const directory = path.resolve(__dirname, '../demo-documents'); await fs.mkdir(directory, { recursive: true }); const files = await fixtures(); for (const [key, filename] of Object.entries({ aadhaarPdf: 'fictional-aadhaar.pdf', salaryPdf: 'fictional-latest-salary.pdf', aadhaarPng: 'fictional-aadhaar.png', salaryJpg: 'fictional-latest-salary.jpg', scannedAadhaarPdf: 'fictional-scanned-aadhaar.pdf' })) await fs.writeFile(path.join(directory, filename), files[key]); console.log('Five fictional OCR documents generated in backend/demo-documents. Regenerate each month.'); })().catch(() => { console.error('Unable to generate demo documents.'); process.exitCode = 1; });

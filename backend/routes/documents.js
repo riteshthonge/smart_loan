@@ -1,0 +1,12 @@
+const r = require('express').Router();
+const multer = require('multer');
+const { rateLimit } = require('express-rate-limit');
+const { role } = require('../middleware/auth');
+const { wrap } = require('../utils');
+const c = require('../controllers/documents');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024, files: 2, fields: 3 } }).fields([{ name: 'document', maxCount: 1 }, { name: 'front', maxCount: 1 }, { name: 'back', maxCount: 1 }]);
+r.post('/ocr', role('APPLICANT'), rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, message: { message: 'Too many OCR uploads. Please retry later.' } }), upload, wrap(c.uploadOcr));
+r.get('/:id/ocr', wrap(c.get));
+r.post('/:id/reprocess', rateLimit({windowMs:15*60*1000,limit:10,message:{message:'Too many reprocessing requests. Retry later.'}}), wrap(require('../controllers/aadhaarReprocess').reprocess));
+r.patch('/:id/fields', role('APPLICANT'), wrap(c.correct));
+module.exports = r;

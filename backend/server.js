@@ -1,0 +1,3 @@
+require('dotenv').config();
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32 || !process.env.MONGO_URI) { console.error('Set MONGO_URI and a JWT_SECRET of at least 32 characters in backend/.env.'); process.exit(1); }
+require('./config/db')().then(() => { const server = require('./app').listen(process.env.PORT || 5000, () => console.log(`SmartLoan API listening on port ${process.env.PORT || 5000}`)); const stop = () => server.close(async () => { await require('mongoose').disconnect(); process.exit(0); }); process.on('SIGINT', stop); process.on('SIGTERM', stop); }).catch(err => { console.error('MongoDB connection failed:', err.message); process.exit(1); });

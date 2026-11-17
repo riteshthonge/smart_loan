@@ -1,0 +1,2 @@
+const r = require('express').Router(); const c = require('../controllers/applications'); const { wrap } = require('../utils'); const { role } = require('../middleware/auth'); const { upload } = require('../middleware/upload');
+r.get('/', wrap(c.list)); r.post('/', role('APPLICANT'), upload, wrap(c.create)); r.get('/:id', wrap(c.details)); r.post('/:id/documents', role('APPLICANT'), upload, wrap(c.attach)); module.exports = r;
